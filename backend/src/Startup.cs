@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ShortLink.Repositories;
+using ShortLink.Repositories.Interfaces;
+using ShortLink.Services;
+using ShortLink.Services.Interface;
 
 namespace ShortLink
 {
@@ -19,6 +22,8 @@ namespace ShortLink
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddScoped<ILinkService, LinkService>();
+            services.AddScoped<ILinkRepository, LinkRepository>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -36,11 +41,11 @@ namespace ShortLink
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapControllerRoute("redirect",
+                    "/",
+                    new { controller = "Redirect", action = "Get" });
+
                 endpoints.MapControllers();
-                endpoints.MapGet("/", async context =>
-                {
-                    await context.Response.WriteAsync("Hello from ShortLink!");
-                });
             });
         }
     }
