@@ -15,10 +15,12 @@ namespace ShortLink.Services
     public class LinkService : ILinkService
     {
         private readonly ILinkRepository _linkRepository;
+        private readonly ICacheService _cache;
 
-        public LinkService(ILinkRepository linkRepository)
+        public LinkService(ILinkRepository linkRepository, ICacheService cache)
         {
             _linkRepository = linkRepository;
+            _cache = cache;
         }
 
         /// <inheritdoc />
@@ -35,9 +37,17 @@ namespace ShortLink.Services
         }
 
         /// <inheritdoc />
-        public LinkResponse Get(string shortCode)
+        public async Task<LinkResponse> Get(string shortCode)
         {
-            var entity = _linkRepository.Get(shortCode);
+            var entity = await _cache.Get<LinkEntity>(shortCode);
+
+            // ReSharper disable once InvertIf
+            if (entity is null)
+            {
+                entity = _linkRepository.Get(shortCode);
+                await _cache.Set(shortCode, entity);
+            }
+
             return new LinkResponse
             {
                 ShortCode = entity.RowKey,

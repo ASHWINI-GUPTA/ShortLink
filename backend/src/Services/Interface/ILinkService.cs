@@ -9,7 +9,7 @@ namespace ShortLink.Services.Interface
     {
         IEnumerable<LinkResponse> GetAll();
 
-        LinkResponse Get(string shortCode);
+        Task<LinkResponse> Get(string shortCode);
 
         Task<string> Create(LinkRequest linkRequest);
 

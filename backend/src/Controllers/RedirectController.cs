@@ -1,21 +1,22 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using ShortLink.Repositories.Interfaces;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using ShortLink.Services.Interface;
 
 namespace ShortLink.Controllers
 {
     public class RedirectController : ControllerBase
     {
-        private readonly ILinkRepository _linkRepository;
+        private readonly ILinkService _linkService;
 
-        public RedirectController(ILinkRepository linkRepository)
+        public RedirectController(ILinkService linkService)
         {
-            _linkRepository = linkRepository;
+            _linkService = linkService;
         }
 
         [HttpGet("{shortCode}")]
-        public IActionResult Get(string shortCode)
+        public async Task<IActionResult> Get(string shortCode)
         {
-            var entity = _linkRepository.Get(shortCode);
+            var entity = await _linkService.Get(shortCode);
             if (entity is null)
                 return BadRequest();
 

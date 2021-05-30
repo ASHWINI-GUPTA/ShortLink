@@ -12,16 +12,33 @@ namespace ShortLink
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        private readonly IWebHostEnvironment _hostContext;
+
+        private readonly IConfiguration _configuration;
+
+        public Startup(IConfiguration configuration, IWebHostEnvironment hostContext)
         {
-            Configuration = configuration;
+            _configuration = configuration;
+            _hostContext = hostContext;
         }
 
-        public IConfiguration Configuration { get; }
-        
         public void ConfigureServices(IServiceCollection services)
         {
+            if (_hostContext.IsDevelopment())
+            {
+                services.AddDistributedMemoryCache();
+            }
+            else
+            {
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = _configuration.GetConnectionString("Redis");
+                    options.InstanceName = "ShortLink";
+                });
+            }
+
             services.AddControllers();
+            services.AddScoped<ICacheService, CacheService>();
             services.AddScoped<ILinkService, LinkService>();
             services.AddScoped<ILinkRepository, LinkRepository>();
         }
@@ -41,10 +58,7 @@ namespace ShortLink
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllerRoute("redirect",
-                    "/",
-                    new { controller = "Redirect", action = "Get" });
-
+                endpoints.MapControllerRoute("redirect", "/", new { controller = "Redirect", action = "Get" });
                 endpoints.MapControllers();
             });
         }
