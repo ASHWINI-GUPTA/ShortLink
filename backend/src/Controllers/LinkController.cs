@@ -19,20 +19,23 @@ namespace ShortLink.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            return Ok(_linkService.GetAll());
+            var linkResponses = _linkService.GetAll();
+            return Ok(linkResponses);
         }
 
         [HttpGet("{shortCode}")]
         public async Task<IActionResult> Get(string shortCode)
         {
-            return Ok(await _linkService.Get(shortCode));
+            Common.ThrowWhenParameterIsNull(shortCode, nameof(shortCode));
+            var linkResponse = await _linkService.Get(shortCode);
+            return Ok(linkResponse);
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] LinkRequest linkRequest)
         {
             var shortCode = await _linkService.Create(linkRequest);
-            return Ok(new { ShortCode = shortCode });
+            return Ok(new {ShortCode = shortCode});
         }
 
         [HttpPut("{shortCode}")]
@@ -40,14 +43,14 @@ namespace ShortLink.Controllers
         {
             linkRequest.ShortCode = shortCode;
             await _linkService.Update(linkRequest);
-            return Ok(new { ShortCode = shortCode });
+            return Ok(new {ShortCode = shortCode});
         }
 
         [HttpDelete("{shortCode}")]
         public async Task<IActionResult> Delete(string shortCode)
         {
             await _linkService.Delete(shortCode);
-            return Ok(new { ShortCode = shortCode });
+            return Ok(new {ShortCode = shortCode});
         }
     }
 }

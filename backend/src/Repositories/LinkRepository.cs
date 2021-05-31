@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
@@ -27,6 +26,7 @@ namespace ShortLink.Repositories
             return _table.ExecuteQuery(tableQuery);
         }
 
+        /// <inheritdoc />
         public LinkEntity Get(string shortCode)
         {
             var tableQuery = new TableQuery<LinkEntity>().Where(
@@ -40,10 +40,6 @@ namespace ShortLink.Repositories
 
         public async Task<LinkEntity> InsertLink(LinkEntity entity)
         {
-            var oldLink = Get(entity.RowKey);
-            
-            if (oldLink is not null) throw new KeyException(entity.RowKey, KeyExceptionType.Duplicate);
-
             var tableResult = await _table.ExecuteAsync(TableOperation.Insert(entity));
             return tableResult.Result as LinkEntity;
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using ShortLink.Enums;
@@ -59,16 +60,27 @@ namespace ShortLink.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> Create(LinkRequest linkRequest)
+        public async Task<string> Create([DisallowNull] LinkRequest linkRequest)
         {
-            // TODO: Move the Validation in Repo here
+            var isExistInReserveCollection = Common.GetReserveKeywordList().Any(i => i.Contains(linkRequest.ShortCode));
+            if (isExistInReserveCollection) throw new KeyException(linkRequest.ShortCode, KeyExceptionType.Duplicate);
+
+            // Check if it exist in DB
+            var oldEntity = _linkRepository.Get(linkRequest.ShortCode);
+
+            if (oldEntity is not null) throw new KeyException(linkRequest.ShortCode, KeyExceptionType.Duplicate);
+
             var entity = new LinkEntity(linkRequest.ShortCode, linkRequest.Url)
             {
                 CreatedAt = DateTime.UtcNow,
                 ExpiredAt = linkRequest.ExpiredAt
             };
 
-            await _linkRepository.InsertLink(entity);
+            // Insert into DB
+            var insertLink = await _linkRepository.InsertLink(entity);
+            
+            // Insert into Cache too
+            await _cache.Set(linkRequest.ShortCode, insertLink);
 
             return linkRequest.ShortCode;
         }

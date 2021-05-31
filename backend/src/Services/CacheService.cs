@@ -23,7 +23,7 @@ namespace ShortLink.Services
 
         public async Task Set<T>(string key, T entity) where T : class
         {
-            var cacheOption = new DistributedCacheEntryOptions() { SlidingExpiration = TimeSpan.FromDays(7) };
+            var cacheOption = new DistributedCacheEntryOptions { SlidingExpiration = TimeSpan.FromDays(7) };
             await _cache.SetStringAsync(key, JsonSerializer.Serialize(entity), cacheOption);
         }
     }
