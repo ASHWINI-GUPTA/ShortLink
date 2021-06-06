@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Configuration;
+using ShortLink.Exceptions;
 
 namespace ShortLink
 {
@@ -22,23 +23,30 @@ namespace ShortLink
                 throw new ArgumentNullException(nameof(entity));
         }
 
-        public static void ThrowWhenParameterIsNull([NotNull] object entity, string parameterName = "")
+        /// <summary>
+        /// Check if entity type is NULL and also check for NULL or EMPTY if of type string.
+        /// </summary>
+        /// <param name="entity">Parameter</param>
+        /// <param name="parameterName">Parameter name</param>
+        public static void ThrowWhenParameterIsNullOrIsEmpty([NotNull] object entity, string parameterName = "")
         {
-            // TODO: Change this Exception, instead throw Custom API Exception and handle it in Global Exception handler.
-
             switch (entity)
             {
                 case string str when string.IsNullOrEmpty(str):
-                    throw new ArgumentNullException(parameterName);
+                    throw new InvalidRequestException(parameterName);
                 case null:
-                    throw new ArgumentNullException(parameterName);
+                    throw new InvalidRequestException(parameterName);
             }
         }
 
         [return: NotNull]
         public static List<string> GetReserveKeywordList() => new()
         {
-            "links",
+            "get",
+            "post",
+            "put",
+            "patch",
+            "links"
         };
     }
 }

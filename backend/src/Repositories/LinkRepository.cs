@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
@@ -10,6 +11,9 @@ using ShortLink.Repositories.Interfaces;
 
 namespace ShortLink.Repositories
 {
+    /// <summary>
+    /// Perform DB operations on <see cref="LinkEntity"/>
+    /// </summary>
     public class LinkRepository : ILinkRepository
     {
         private readonly CloudTable _table;
@@ -20,6 +24,7 @@ namespace ShortLink.Repositories
             _table = tableClient.GetTableReference("links");
         }
 
+        /// <inheritdoc />
         public IEnumerable<LinkEntity> GetAll()
         {
             var tableQuery = new TableQuery<LinkEntity>();
@@ -27,7 +32,7 @@ namespace ShortLink.Repositories
         }
 
         /// <inheritdoc />
-        public LinkEntity Get(string shortCode)
+        public LinkEntity Get([DisallowNull] string shortCode)
         {
             var tableQuery = new TableQuery<LinkEntity>().Where(
                 TableQuery.CombineFilters(
@@ -38,24 +43,30 @@ namespace ShortLink.Repositories
             return _table.ExecuteQuery(tableQuery)?.FirstOrDefault();
         }
 
-        public async Task<LinkEntity> InsertLink(LinkEntity entity)
+        /// <inheritdoc />
+        public async Task<LinkEntity> Insert([DisallowNull] LinkEntity entity)
         {
             var tableResult = await _table.ExecuteAsync(TableOperation.Insert(entity));
             return tableResult.Result as LinkEntity;
         }
 
-        public async Task<LinkEntity> UpdateLink(LinkEntity entity)
+        /// <inheritdoc />
+        public async Task<LinkEntity> Update([DisallowNull] LinkEntity entity)
         {
             var op = TableOperation.Merge(entity);
             var result = await _table.ExecuteAsync(op);
             return result.Result as LinkEntity;
         }
 
-        public async Task<bool> DeleteLink(string key)
+        /// <inheritdoc />
+        public async Task Remove([DisallowNull] LinkEntity entity)
         {
-            var oldLink = Get(key) ?? throw new KeyException(key, KeyExceptionType.NotFound);
-            var result = await _table.ExecuteAsync(TableOperation.Delete(oldLink));
-            return result.HttpStatusCode is >= 200 and < 300;
+            var result = await _table.ExecuteAsync(TableOperation.Delete(entity));
+            
+            if (result.HttpStatusCode is not (>= 200 and < 300))
+            {
+                throw new OperationException(Operation.DeleteLink, result.Result.ToString());
+            }
         }
     }
 }

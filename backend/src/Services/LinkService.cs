@@ -13,11 +13,17 @@ using ShortLink.Services.Interface;
 
 namespace ShortLink.Services
 {
+    /// <inheritdoc cref="ILinkService"/>
     public class LinkService : ILinkService
     {
         private readonly ILinkRepository _linkRepository;
         private readonly ICacheService _cache;
 
+        /// <summary>
+        /// Initialize new instance of <see cref="LinkService"/>
+        /// </summary>
+        /// <param name="linkRepository">Link Repository</param>
+        /// <param name="cache">Cache Service</param>
         public LinkService(ILinkRepository linkRepository, ICacheService cache)
         {
             _linkRepository = linkRepository;
@@ -27,7 +33,17 @@ namespace ShortLink.Services
         /// <inheritdoc />
         public IEnumerable<LinkResponse> GetAll()
         {
-            return _linkRepository.GetAll().Select(l => new LinkResponse
+            IEnumerable<LinkEntity> entities;
+            try
+            {
+                entities = _linkRepository.GetAll();
+            }
+            catch (Exception exception)
+            {
+                throw new OperationException(Operation.GetLink, exception);
+            }
+
+            return entities.Select(l => new LinkResponse
             {
                 ShortCode = l.RowKey,
                 CreatedAt = l.CreatedAt,
@@ -38,15 +54,23 @@ namespace ShortLink.Services
         }
 
         /// <inheritdoc />
-        public async Task<LinkResponse> Get(string shortCode)
+        public async Task<LinkResponse> Get([DisallowNull] string shortCode)
         {
-            var entity = await _cache.Get<LinkEntity>(shortCode);
-
-            // ReSharper disable once InvertIf
-            if (entity is null)
+            LinkEntity? entity;
+            try
             {
-                entity = _linkRepository.Get(shortCode);
-                await _cache.Set(shortCode, entity);
+                entity = await _cache.Get<LinkEntity>(shortCode);
+
+                // ReSharper disable once InvertIf
+                if (entity is null)
+                {
+                    entity = _linkRepository.Get(shortCode);
+                    await _cache.Set(shortCode, entity);
+                }
+            }
+            catch (Exception exception)
+            {
+                throw new OperationException(Operation.GetLink, exception);
             }
 
             return new LinkResponse
@@ -76,17 +100,23 @@ namespace ShortLink.Services
                 ExpiredAt = linkRequest.ExpiredAt
             };
 
-            // Insert into DB
-            var insertLink = await _linkRepository.InsertLink(entity);
-            
-            // Insert into Cache too
-            await _cache.Set(linkRequest.ShortCode, insertLink);
+            try
+            {
+                // Insert into DB
+                var insertLink = await _linkRepository.Insert(entity);
+                // Insert into Cache too
+                await _cache.Set(linkRequest.ShortCode, insertLink);
 
-            return linkRequest.ShortCode;
+                return linkRequest.ShortCode;
+            }
+            catch (Exception exception)
+            {
+                throw new OperationException(Operation.CreateLink, exception);
+            }
         }
 
         /// <inheritdoc />
-        public async Task<string> Update(LinkRequest linkRequest)
+        public async Task<string> Update([DisallowNull] LinkRequest linkRequest)
         {
             var oldEntity = _linkRepository.Get(linkRequest.ShortCode) ??
                             throw new KeyException(linkRequest.ShortCode, KeyExceptionType.NotFound);
@@ -95,15 +125,34 @@ namespace ShortLink.Services
             oldEntity.ExpiredAt = linkRequest.ExpiredAt;
             oldEntity.UpdatedAt = DateTime.UtcNow;
 
-            await _linkRepository.UpdateLink(oldEntity);
-            return linkRequest.ShortCode;
+            try
+            {
+                await _linkRepository.Update(oldEntity);
+                return linkRequest.ShortCode;
+            }
+            catch (Exception exception)
+            {
+                throw new OperationException(Operation.UpdateLink, exception);
+            }
         }
 
         /// <inheritdoc />
-        public async Task Delete(string shortCode)
+        public async Task Delete([DisallowNull] string shortCode)
         {
-            // TODO: Check the isDeleted value and throw an exception.
-            var isDeleted = await _linkRepository.DeleteLink(shortCode);
+            var oldLink = _linkRepository.Get(shortCode);
+
+            if (oldLink is not null)
+                throw new KeyException(shortCode, KeyExceptionType.NotFound);
+
+            try
+            {
+                await _linkRepository.Remove(oldLink);
+                await _cache.Remove(shortCode);
+            }
+            catch (Exception exception)
+            {
+                throw new OperationException(Operation.DeleteLink, exception);
+            }
         }
     }
 }
